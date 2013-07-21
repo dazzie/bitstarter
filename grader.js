@@ -22,6 +22,8 @@ References:
 */
 
 var fs = require('fs');
+var sys = require('util');
+var rest = require('restler');
 var program = require('commander');
 var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
@@ -61,14 +63,29 @@ var clone = function(fn) {
     return fn.bind({});
 };
 
-if(require.main == module) {
+//modified to use restler and take url
+if (require.main == module) {
     program
-        .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
-} else {
-    exports.checkHtmlFile = checkHtmlFile;
+    .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
+    .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+    .option('-u, --url <url_link>', 'Command line URL')
+    .parse(process.argv);
+    if (program.u) {
+	var url = program.url.toString();
+	rest.get(url).on('complete', function (result, response) {
+	    console.log("success download");
+	    fs.writeFileSync('outfile.txt', result);
+	    console.log("write download to outfile.txt");
+	    var checkJson = checkHtmlFile('outfile.txt', 'checks.json');
+	    var outJson = JSON.stringify(checkJson, null, 4);
+	    console.log(outJson);
+	    });
+	}
+    if (program.file) {
+	var checkJson = checkHtmlFile(program.file, program.checks);
+	var outJson = JSON.stringify(checkJson, null, 4);
+	console.log(outJson);
+	} else {
+	    exports.checkHtmlFile = checkHtmlFile;
+	    }
 }
